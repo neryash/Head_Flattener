@@ -18,7 +18,9 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
@@ -46,6 +48,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
+import in.myinnos.savebitmapandsharelib.SaveAndShare;
+
 public class MainActivity extends AppCompatActivity {
 
 
@@ -60,9 +64,16 @@ public class MainActivity extends AppCompatActivity {
     private boolean isWorking;
     private int time, frames;
     private long totalTime;
+    private boolean foundHair;
+    int FPR;
+    int FPG;
+    int FPB;
     private double timeInDouble, totalTimeInDouble;
     private int height;
     private Bitmap bitmap;
+    private int[] square;
+    private int firstR, firstG, firstB, firstY;
+    private ArrayList<Integer> fixes;
     public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
     //final String relativeLocation = Environment.DIRECTORY_PICTURES + File.separator + "YourSubforderName";
     private Uri uri;
@@ -78,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         allPixels = new ArrayList<>();
         time = 0;
         isWorking = false;
+        fixes = new ArrayList<>();
         timeInDouble = time * 0.1;
         middlePixels = new ArrayList<>();
         frames = 0;
@@ -134,9 +146,26 @@ public class MainActivity extends AppCompatActivity {
 //                Log.i("checky", finalPicture[0] + "");
             }
         });
+        findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createSquare(0xFFFFF8DC);
+            }
+        });
         //generateImage();
     }
 
+    private void createSquare(int color){
+        square = new int[3000];
+        //color = 0xFF000FF;
+        Log.i("hellowell", color+"");
+        Log.i("hellowell", (Integer.toHexString(color))+"");
+        for(int a = 0; a < 3000; a++){
+            square[a] = color;
+        }
+        Bitmap bitmap = Bitmap.createBitmap(square, 100, 30, Bitmap.Config.ARGB_8888);
+        capturedImageView.setImageBitmap(bitmap);
+    }
     private void generateImage(Uri imageUri) {
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -148,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
                         //getFrameThroughTime(uri, time, timesClicked);
                         time += 50000;
                         timeInDouble = time * 0.1;
+                        foundHair = false;
 
                         final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
 
@@ -174,7 +204,46 @@ public class MainActivity extends AppCompatActivity {
                         for (int i = 0; i < bitmapHeight; i++) {
                             //for(int ia = 0; ia < 10; ia++) {
                             middlePixels.add(bmFrame.getPixel(width / 2, i));
-                            allPixels.add(bmFrame.getPixel(width / 2, i));
+                            String hexValue = Integer.toHexString(bmFrame.getPixel(width/2, i));
+//                            Log.i("collor", hexValue.substring(0,2));
+//                            Log.i("collor", hexValue.substring(2,4));
+//                            Log.i("collor", hexValue.substring(4,6));
+//                            Log.i("collor", hexValue.substring(6,8));
+//                            Log.i("collor", hexValue.length() + "");
+                            int RR = Integer.parseInt(hexValue.substring(2, 4), 16);
+                            int GG = Integer.parseInt(hexValue.substring(4, 6),16);
+                            int BB = Integer.parseInt(hexValue.substring(6, 8),16);
+                            if(i == 0){
+                               FPB = BB;
+                               FPR = RR;
+                               FPG = GG;
+                            }
+                            Log.i("hair", Math.abs(FPR-RR)+ "");
+                                if(Math.abs(FPR-RR) + Math.abs(FPB-BB) + Math.abs(FPG-GG) > 50) {
+                                    if(!foundHair) {
+                                        if (time == 50000) {
+                                            firstR = RR;
+                                            firstG = GG;
+                                            firstB = BB;
+                                            firstY = i;
+                                            Log.i("check", RR + " " + GG + " " + BB + " " + i + " hello");
+                                            foundHair = true;
+                                            allPixels.add(0xFF0000FF);
+                                        } else {
+                                            //fixes.add(i - firstY);
+                                            fixes.add(i + (i - firstY));
+                                            foundHair = true;
+                                            allPixels.add(0xFF0000FF);
+                                        }
+                                    }else {
+                                        allPixels.add(bmFrame.getPixel(width / 2, i));
+                                    }
+                                }else{
+                                    allPixels.add(bmFrame.getPixel(width / 2, i));
+                                }
+                            //Log.i("collor", Long.parseLong(firstR,16) + "");
+                            //firstG = ;
+                            //firstB = ;
                         }
                         centerPixels.add(middlePixels);
                         wholeImage = new int[allPixels.size()];
@@ -182,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
                         for (int i = 0; i < allPixels.size(); i++) {
                             wholeImage[i] = allPixels.get(i);
                         }
+                        Log.i("helllo", fixes.toString());
 
                         bitmap = Bitmap.createBitmap(wholeImage, centerPixels.get(0).size(), centerPixels.size(), Bitmap.Config.ARGB_8888);
                         runOnUiThread(new Runnable() {
@@ -198,6 +268,7 @@ public class MainActivity extends AppCompatActivity {
                         });
                     }
                 } catch (Exception e) {
+                    e.printStackTrace();
                     Log.i("finished", e.getMessage());
                     isWorking = false;
                     if (checkPermissionREAD_EXTERNAL_STORAGE(MainActivity.this)) {
@@ -205,7 +276,7 @@ public class MainActivity extends AppCompatActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Bitmap resized = Bitmap.createScaledBitmap(bitmap, bitmap.getWidth(), bitmap.getHeight()*16, true);
+                                Bitmap resized = Bitmap.createScaledBitmap(bitmap, bitmap.getWidth(), bitmap.getHeight()*5, true);
                                 float degrees = 90; //rotation degree
                                 Matrix matrix = new Matrix();
                                 matrix.setRotate(degrees);
@@ -219,28 +290,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }, 0, 50);
     }
-    private void SaveImage(Bitmap finalBitmap) {
+    private void saveImage(Bitmap finalBitmap, String image_name) {
 
         String root = Environment.getExternalStorageDirectory().toString();
-        File myDir = new File(root + "/saved_images");
-        if (!myDir.exists()) {
-            myDir.mkdirs();
-        }
-        //Random generator = new Random();
-        long n = System.currentTimeMillis() * 1000L;
-        //n = generator.nextInt(n);
-        String fname = "Image-"+ n +".jpg";
-        File file = new File (myDir, fname);
-        if (file.exists ())
-            file.delete ();
+        File myDir = new File(root);
+        myDir.mkdirs();
+        String fname = "Image-" + image_name+ ".jpg";
+        File file = new File(myDir, fname);
+        if (file.exists()) file.delete();
+        Log.i("LOAD", root + fname);
         try {
             FileOutputStream out = new FileOutputStream(file);
             finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
             out.flush();
             out.close();
-            sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED,
-                    Uri.parse("file://" + Environment.getExternalStorageDirectory())));
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -277,7 +340,12 @@ public class MainActivity extends AppCompatActivity {
             Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
             ImageView img=(ImageView)findViewById(R.id.frameDisplay);
             img.setImageBitmap(b);
-            SaveImage(b);
+            Log.i("save", "saveAndShare");
+            if(SaveAndShare.checkPermissionForExternalStorage(MainActivity.this)){
+                SaveAndShare.save(this, b, "face-" + System.currentTimeMillis(), "Your image was saved!", "Do you want to share it?");
+            }else {
+                SaveAndShare.requestPermissionForExternalStorage(MainActivity.this);
+            }
         }
         catch (FileNotFoundException e)
         {
