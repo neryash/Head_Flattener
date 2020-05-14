@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private int[] finalPicture, wholeImage;
     ArrayList<Integer> middlePixels;
     private TextView completion;
+    private HashMap<Integer,Integer> whereToFix;
     private boolean isWorking;
     private int time, frames;
     private long totalTime;
@@ -92,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         fixes = new ArrayList<>();
         timeInDouble = time * 0.1;
         middlePixels = new ArrayList<>();
+        whereToFix = new HashMap<>();
         frames = 0;
         frameDisplay = findViewById(R.id.frameDisplay);
         //String videoPath = "android.resource://" + getPackageName() + "/" + R.raw.trial_video;
@@ -201,10 +203,14 @@ public class MainActivity extends AppCompatActivity {
                         int width = bmFrame.getWidth();
                         int bitmapHeight = bmFrame.getHeight();
                         middlePixels.clear();
+                        int howToFix = 0;
+                        int[] centeredPixels = new int[bitmapHeight];
                         for (int i = 0; i < bitmapHeight; i++) {
+                            //centeredPixels = new int[bitmapHeight];
                             //for(int ia = 0; ia < 10; ia++) {
                             middlePixels.add(bmFrame.getPixel(width / 2, i));
                             String hexValue = Integer.toHexString(bmFrame.getPixel(width/2, i));
+                            centeredPixels[i] = bmFrame.getPixel(width/2, i);
 //                            Log.i("collor", hexValue.substring(0,2));
 //                            Log.i("collor", hexValue.substring(2,4));
 //                            Log.i("collor", hexValue.substring(4,6));
@@ -218,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
                                FPR = RR;
                                FPG = GG;
                             }
-                            Log.i("hair", Math.abs(FPR-RR)+ "");
+                            //Log.i("hair", Math.abs(FPR-RR)+ "");
                                 if(Math.abs(FPR-RR) + Math.abs(FPB-BB) + Math.abs(FPG-GG) > 50) {
                                     if(!foundHair) {
                                         if (time == 50000) {
@@ -228,22 +234,41 @@ public class MainActivity extends AppCompatActivity {
                                             firstY = i;
                                             Log.i("check", RR + " " + GG + " " + BB + " " + i + " hello");
                                             foundHair = true;
-                                            allPixels.add(0xFF0000FF);
+                                            //allPixels.add(0xFF0000FF);
                                         } else {
                                             //fixes.add(i - firstY);
                                             fixes.add(i + (i - firstY));
                                             foundHair = true;
-                                            allPixels.add(0xFF0000FF);
+                                            howToFix = i-firstY;
+                                            //whereToFix.put(centerPixels.size(), i-firstY);
+                                            if(i-firstY > 0) {
+                                                //allPixels.add(0xFFFF0000);
+                                            }else {
+                                                //allPixels.add(0xFF00FF00);
+                                            }
                                         }
                                     }else {
-                                        allPixels.add(bmFrame.getPixel(width / 2, i));
+                                        //allPixels.add(bmFrame.getPixel(width / 2, i));
                                     }
                                 }else{
-                                    allPixels.add(bmFrame.getPixel(width / 2, i));
+                                    //allPixels.add(bmFrame.getPixel(width / 2, i));
                                 }
                             //Log.i("collor", Long.parseLong(firstR,16) + "");
                             //firstG = ;
                             //firstB = ;
+                        }
+                        //make centered pixels centered
+                        if(howToFix > 0) {
+                            for (int j = 0; j < howToFix; j++) {
+                                centeredPixels[centeredPixels.length - j -1] = 0xFFFFFFFF;
+                            }
+                        }else if(howToFix < 0){
+                            for (int j = 0; j > howToFix; j--) {
+                                centeredPixels[Math.abs(j) ] = 0xFFFFFFFF;
+                            }
+                        }
+                        for(int j = 0; j < bitmapHeight; j++){
+                            allPixels.add(centeredPixels[j]);
                         }
                         centerPixels.add(middlePixels);
                         wholeImage = new int[allPixels.size()];
@@ -252,6 +277,11 @@ public class MainActivity extends AppCompatActivity {
                             wholeImage[i] = allPixels.get(i);
                         }
                         Log.i("helllo", fixes.toString());
+                        try {
+                            //Log.i("chedcker", wholeImage[1355] + " " + centerPixels.get(1).get(275));
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
 
                         bitmap = Bitmap.createBitmap(wholeImage, centerPixels.get(0).size(), centerPixels.size(), Bitmap.Config.ARGB_8888);
                         runOnUiThread(new Runnable() {
