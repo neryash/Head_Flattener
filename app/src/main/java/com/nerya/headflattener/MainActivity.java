@@ -258,18 +258,30 @@ public class MainActivity extends AppCompatActivity {
                             //firstB = ;
                         }
                         //make centered pixels centered
+                        //stabilize:
                         if(howToFix > 0) {
+                            for(int j = 0; j < bitmapHeight; j++){
+                                if(!(j-howToFix < 0)){
+                                    centeredPixels[j-howToFix] = centeredPixels[j];
+                                }
+                            }
                             for (int j = 0; j < howToFix; j++) {
-                                centeredPixels[centeredPixels.length - j -1] = 0xFFFFFFFF;
+                                centeredPixels[centeredPixels.length - j -1] = centeredPixels[centeredPixels.length-howToFix-1];
                             }
                         }else if(howToFix < 0){
+                            for(int j = bitmapHeight; j > 0; j--){
+                                if((j-howToFix < bitmapHeight-1)){
+                                    centeredPixels[j-howToFix-1] = centeredPixels[j];
+                                }
+                            }
                             for (int j = 0; j > howToFix; j--) {
-                                centeredPixels[Math.abs(j) ] = 0xFFFFFFFF;
+                                centeredPixels[Math.abs(j)] = centeredPixels[Math.abs(howToFix+1)];
                             }
                         }
                         for(int j = 0; j < bitmapHeight; j++){
                             allPixels.add(centeredPixels[j]);
                         }
+                        //end of stabilize
                         centerPixels.add(middlePixels);
                         wholeImage = new int[allPixels.size()];
 
